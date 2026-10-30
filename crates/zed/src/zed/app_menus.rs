@@ -1,0 +1,246 @@
+use gpui::{App, Menu, MenuItem, OsAction};
+use zed_actions::{Quit, project_panel};
+
+pub fn app_menus(_cx: &mut App) -> Vec<Menu> {
+    let view_items = vec![
+        MenuItem::action(
+            "Zoom In",
+            zed_actions::IncreaseBufferFontSize { persist: false },
+        ),
+        MenuItem::action(
+            "Zoom Out",
+            zed_actions::DecreaseBufferFontSize { persist: false },
+        ),
+        MenuItem::action(
+            "Reset Zoom",
+            zed_actions::ResetBufferFontSize { persist: false },
+        ),
+        MenuItem::action(
+            "Reset All Zoom",
+            zed_actions::ResetAllZoom { persist: false },
+        ),
+        MenuItem::separator(),
+        MenuItem::action("Toggle Left Dock", workspace::ToggleLeftDock),
+        MenuItem::action("Toggle Right Dock", workspace::ToggleRightDock),
+        MenuItem::action("Toggle Bottom Dock", workspace::ToggleBottomDock),
+        MenuItem::action("Toggle All Docks", workspace::ToggleAllDocks),
+        MenuItem::submenu(Menu {
+            name: "Editor Layout".into(),
+            disabled: false,
+            items: vec![
+                MenuItem::action("Split Up", workspace::SplitUp::default()),
+                MenuItem::action("Split Down", workspace::SplitDown::default()),
+                MenuItem::action("Split Left", workspace::SplitLeft::default()),
+                MenuItem::action("Split Right", workspace::SplitRight::default()),
+            ],
+        }),
+        MenuItem::separator(),
+        MenuItem::action("Project Panel", project_panel::ToggleFocus),
+        MenuItem::action("Outline Panel", outline_panel::ToggleFocus),
+        MenuItem::separator(),
+    ];
+
+    vec![
+        Menu {
+            name: "Sift".into(),
+            disabled: false,
+            items: vec![
+                MenuItem::action("About Sift", zed_actions::About),
+                MenuItem::separator(),
+                MenuItem::submenu(Menu::new("Settings").items([
+                    MenuItem::action("Open Settings", zed_actions::OpenSettings),
+                    MenuItem::action("Open Settings File", super::OpenSettingsFile),
+                    MenuItem::action("Open Project Settings", zed_actions::OpenProjectSettings),
+                    MenuItem::action("Open Project Settings File", super::OpenProjectSettingsFile),
+                    MenuItem::action("Open Default Settings", super::OpenDefaultSettings),
+                    MenuItem::separator(),
+                    MenuItem::action("Open Keymap", zed_actions::OpenKeymap),
+                    MenuItem::action("Open Keymap File", zed_actions::OpenKeymapFile),
+                    MenuItem::action("Open Default Key Bindings", zed_actions::OpenDefaultKeymap),
+                    MenuItem::separator(),
+                    MenuItem::action(
+                        "Select Theme...",
+                        zed_actions::theme_selector::Toggle::default(),
+                    ),
+                    MenuItem::action(
+                        "Select Icon Theme...",
+                        zed_actions::icon_theme_selector::Toggle::default(),
+                    ),
+                ])),
+                MenuItem::separator(),
+                #[cfg(target_os = "macos")]
+                MenuItem::os_submenu("Services", gpui::SystemMenuType::Services),
+                MenuItem::separator(),
+                MenuItem::action("Extensions", zed_actions::Extensions::default()),
+                #[cfg(not(target_os = "windows"))]
+                MenuItem::action("Install CLI", install_cli::InstallCliBinary),
+                MenuItem::separator(),
+                #[cfg(target_os = "macos")]
+                MenuItem::action("Hide Sift", super::Hide),
+                #[cfg(target_os = "macos")]
+                MenuItem::action("Hide Others", super::HideOthers),
+                #[cfg(target_os = "macos")]
+                MenuItem::action("Show All", super::ShowAll),
+                MenuItem::separator(),
+                MenuItem::action("Quit Sift", Quit),
+            ],
+        },
+        Menu {
+            name: "File".into(),
+            disabled: false,
+            items: vec![
+                MenuItem::action("New Window", workspace::NewWindow),
+                MenuItem::separator(),
+                #[cfg(not(target_os = "macos"))]
+                MenuItem::action("Open File...", workspace::OpenFiles),
+                MenuItem::action(
+                    if cfg!(not(target_os = "macos")) {
+                        "Open Folder..."
+                    } else {
+                        "Open…"
+                    },
+                    workspace::Open::default(),
+                ),
+                MenuItem::action("Open Recent…", zed_actions::OpenRecent::default()),
+                MenuItem::separator(),
+                MenuItem::action("Add Folder to Project…", workspace::AddFolderToProject),
+                MenuItem::separator(),
+                MenuItem::action(
+                    "Close Editor",
+                    workspace::CloseActiveItem {
+                        save_intent: None,
+                        close_pinned: true,
+                    },
+                ),
+                MenuItem::action("Close Project", workspace::CloseProject),
+                MenuItem::action("Close Window", workspace::CloseWindow),
+            ],
+        },
+        Menu {
+            name: "Edit".into(),
+            disabled: false,
+            items: vec![
+                MenuItem::os_action("Copy", editor::actions::Copy, OsAction::Copy),
+                MenuItem::action("Copy and Trim", editor::actions::CopyAndTrim),
+                MenuItem::separator(),
+                MenuItem::action("Find", search::buffer_search::Deploy::find()),
+                MenuItem::action("Find in Project", workspace::DeploySearch::default()),
+            ],
+        },
+        Menu {
+            name: "Selection".into(),
+            disabled: false,
+            items: vec![
+                MenuItem::os_action(
+                    "Select All",
+                    editor::actions::SelectAll,
+                    OsAction::SelectAll,
+                ),
+                MenuItem::action("Expand Selection", editor::actions::SelectLargerSyntaxNode),
+                MenuItem::action("Shrink Selection", editor::actions::SelectSmallerSyntaxNode),
+                MenuItem::action("Select Next Sibling", editor::actions::SelectNextSyntaxNode),
+                MenuItem::action(
+                    "Select Previous Sibling",
+                    editor::actions::SelectPreviousSyntaxNode,
+                ),
+                MenuItem::separator(),
+                MenuItem::action(
+                    "Add Cursor Above",
+                    editor::actions::AddSelectionAbove {
+                        skip_soft_wrap: true,
+                    },
+                ),
+                MenuItem::action(
+                    "Add Cursor Below",
+                    editor::actions::AddSelectionBelow {
+                        skip_soft_wrap: true,
+                    },
+                ),
+                MenuItem::action(
+                    "Select Next Occurrence",
+                    editor::actions::SelectNext {
+                        replace_newest: false,
+                    },
+                ),
+                MenuItem::action(
+                    "Select Previous Occurrence",
+                    editor::actions::SelectPrevious {
+                        replace_newest: false,
+                    },
+                ),
+                MenuItem::action("Select All Occurrences", editor::actions::SelectAllMatches),
+            ],
+        },
+        Menu {
+            name: "View".into(),
+            disabled: false,
+            items: view_items,
+        },
+        Menu {
+            name: "Go".into(),
+            disabled: false,
+            items: vec![
+                MenuItem::action("Back", workspace::GoBack),
+                MenuItem::action("Forward", workspace::GoForward),
+                MenuItem::separator(),
+                MenuItem::action("Command Palette...", zed_actions::command_palette::Toggle),
+                MenuItem::separator(),
+                MenuItem::action("Go to File...", workspace::ToggleFileFinder::default()),
+                // MenuItem::action("Go to Symbol in Project", project_symbols::Toggle),
+                MenuItem::action(
+                    "Go to Symbol in Editor...",
+                    zed_actions::outline::ToggleOutline,
+                ),
+                MenuItem::action("Go to Line/Column...", editor::actions::ToggleGoToLine),
+                MenuItem::separator(),
+                MenuItem::action(
+                    "Go to Definition",
+                    editor::actions::GoToDefinition::default(),
+                ),
+                MenuItem::action(
+                    "Go to Declaration",
+                    editor::actions::GoToDeclaration::default(),
+                ),
+                MenuItem::action(
+                    "Go to Type Definition",
+                    editor::actions::GoToTypeDefinition::default(),
+                ),
+                MenuItem::action(
+                    "Find All References",
+                    editor::actions::FindAllReferences::default(),
+                ),
+                MenuItem::action("Show Incoming Calls", call_hierarchy::ShowIncomingCalls),
+                MenuItem::action("Show Outgoing Calls", call_hierarchy::ShowOutgoingCalls),
+                MenuItem::separator(),
+                MenuItem::action("Next Problem", editor::actions::GoToDiagnostic::default()),
+                MenuItem::action(
+                    "Previous Problem",
+                    editor::actions::GoToPreviousDiagnostic::default(),
+                ),
+            ],
+        },
+        Menu {
+            name: "Window".into(),
+            disabled: false,
+            items: vec![
+                MenuItem::action("Minimize", super::Minimize),
+                MenuItem::action("Zoom", super::Zoom),
+                MenuItem::separator(),
+            ],
+        },
+        Menu {
+            name: "Help".into(),
+            disabled: false,
+            items: vec![
+                MenuItem::action("View Dependency Licenses", zed_actions::OpenLicenses),
+                MenuItem::separator(),
+                MenuItem::action(
+                    "Sift Website",
+                    super::OpenBrowser {
+                        url: "https://www.letus.cool".into(),
+                    },
+                ),
+            ],
+        },
+    ]
+}
